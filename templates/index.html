@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Ujian Online - AI Detection</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+        .login-card { max-width: 400px; margin: 100px auto; }
+        h1 { color: #333; margin-bottom: 10px; text-align: center; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 30px; }
+        .input-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; color: #333; font-weight: 500; }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        input:focus { outline: none; border-color: #667eea; }
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn:hover { background: #5568d3; }
+        .btn-success { background: #10b981; }
+        .btn-success:hover { background: #059669; }
+        .grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; }
+        .video-container { 
+            position: relative; 
+            background: #000; 
+            border-radius: 10px; 
+            overflow: hidden;
+            min-height: 110px;
+        }
+        #videoFeed { 
+            width: 100%; 
+            height: 50%; 
+            object-fit: cover;
+            display: block;
+        }
+        .rec-indicator {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: red;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
+            box-shadow: 0 4px 15px rgba(255,0,0,0.5);
+        }
+        .rec-dot {
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .violation-log {
+            max-height: 450px;
+            overflow-y: auto;
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        .violation-item {
+            background: #fee2e2;
+            border-left: 4px solid #ef4444;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            animation: slideIn 0.3s ease;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(-20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .violation-type { font-weight: bold; color: #dc2626; margin-bottom: 5px; }
+        .violation-time { font-size: 12px; color: #666; }
+        .question-card { background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .question-text { font-size: 18px; font-weight: 600; margin-bottom: 15px; color: #333; }
+        .option {
+            padding: 15px;
+            margin: 10px 0;
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+        }
+        .option:hover { border-color: #667eea; background: #f0f4ff; transform: translateX(5px); }
+        .option input { width: auto; margin-right: 10px; cursor: pointer; }
+        .warning-banner {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .info-banner {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .email-status {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .stats { display: flex; justify-content: space-around; margin-bottom: 20px; }
+        .stat-item { text-align: center; }
+        .stat-number { font-size: 36px; font-weight: bold; color: #667eea; }
+        .stat-label { color: #666; font-size: 14px; margin-top: 5px; }
+        .hidden { display: none !important; }
+        .instructions { list-style: none; padding-left: 0; }
+        .instructions li {
+            padding: 12px;
+            margin: 8px 0;
+            background: #f9fafb;
+            border-radius: 5px;
+            border-left: 3px solid #10b981;
+        }
+        .instructions li:before {
+            content: "✓ ";
+            color: #10b981;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .result-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .result-summary h2 {
+            color: white;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .result-score {
+            font-size: 64px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .result-score.safe { color: #10b981; }
+        .result-score.warning { color: #f59e0b; }
+        .result-score.danger { color: #ef4444; }
+        
+        .info-box {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 2px solid #e5e7eb;
+        }
+        .info-box h3 {
+            color: #374151;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-label {
+            color: #6b7280;
+            font-weight: 500;
+        }
+        .info-value {
+            font-weight: bold;
+            color: #374151;
+        }
+
+        .violation-list-result {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .violation-list-result h3 {
+            color: #374151;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .result-violation-item {
+            background: #fef2f2;
+            border-left: 4px solid #ef4444;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .result-violation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+        .result-violation-number {
+            background: #ef4444;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            flex-shrink: 0;
+            margin-right: 12px;
+        }
+        .result-violation-content {
+            flex: 1;
+        }
+        .result-violation-type {
+            font-weight: bold;
+            color: #dc2626;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+        .result-violation-time {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .result-violation-desc {
+            color: #374151;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-top: 8px;
+        }
+        .empty-violations {
+            text-align: center;
+            padding: 60px 20px;
+            color: #10b981;
+        }
+        .empty-violations-icon {
+            font-size: 72px;
+            margin-bottom: 15px;
+        }
+        .empty-violations h3 {
+            color: #10b981;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .empty-violations p {
+            color: #6b7280;
+            font-size: 16px;
+        }
+
+        @media (max-width: 1024px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+
+        .violation-log::-webkit-scrollbar,
+        .violation-list-result::-webkit-scrollbar {
+            width: 8px;
+        }
+        .violation-log::-webkit-scrollbar-track,
+        .violation-list-result::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        .violation-log::-webkit-scrollbar-thumb,
+        .violation-list-result::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- LOGIN -->
+    <div id="loginPage" class="login-card card">
+        <h1>🎓 Sistem Ujian Online</h1>
+        <p class="subtitle">dengan AI Deteksi Kecurangan + Email Alert</p>
+        <div class="input-group">
+            <label for="nim">NIM / Email</label>
+            <input type="text" id="nim" placeholder="Masukkan NIM" value="202301234">
+        </div>
+        <div class="input-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Masukkan Password" value="123456">
+        </div>
+        <button class="btn" onclick="login()">Login</button>
+    </div>
+
+    <!-- INSTRUKSI -->
+    <div id="instructionPage" class="container hidden">
+        <div class="card">
+            <h1>Selamat Datang, <span id="studentName"></span></h1>
+            <div class="info-banner">
+                <h3>📋 Petunjuk Ujian</h3>
+            </div>
+            <ul class="instructions">
+                <li><strong>Sistem AI:</strong> Mendeteksi wajah, posisi kepala, HP, dan buku</li>
+                <li><strong>Buffer 5-6 detik:</strong> Toleransi gerakan natural lebih lama</li>
+                <li><strong>Tab switching:</strong> Terdeteksi dan dilaporkan</li>
+                <li><strong>Email otomatis:</strong> Dikirim ke pengawas saat ujian selesai</li>
+                <li><strong>Pencahayaan:</strong> Pastikan cukup terang</li>
+            </ul>
+            <div class="warning-banner">
+                <strong>⚠️ Peringatan:</strong> Jangan gunakan HP, buku, atau pindah tab!
+            </div>
+            <button class="btn btn-success" onclick="startExam()">Mulai Ujian</button>
+        </div>
+    </div>
+
+    <!-- UJIAN -->
+    <div id="examPage" class="container hidden">
+        <div class="card">
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-number" id="currentQ">1</div>
+                    <div class="stat-label">Soal Aktif</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="violationCount">0</div>
+                    <div class="stat-label">Pelanggaran Kamera</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="tabSwitchCount">0</div>
+                    <div class="stat-label">Pindah Tab</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="totalQ">5</div>
+                    <div class="stat-label">Total Soal</div>
+                </div>
+            </div>
+        </div>
+        <div class="grid">
+            <div>
+                <div class="card">
+                    <div id="tabWarning" class="warning-banner hidden">
+                        ⚠️ <strong>PERINGATAN:</strong> Anda pindah tab!
+                    </div>
+                    <div class="question-card">
+                        <div class="question-text" id="questionText"></div>
+                        <div id="optionsContainer"></div>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn" id="prevBtn" onclick="prevQuestion()" style="display:none;">Sebelumnya</button>
+                        <button class="btn" id="nextBtn" onclick="nextQuestion()">Selanjutnya</button>
+                        <button class="btn btn-success hidden" id="submitBtn" onclick="submitExam()">Kumpulkan Ujian</button>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="card">
+                    <h3>📹 Monitoring Kamera</h3>
+                    <div class="video-container">
+                        <img id="videoFeed" src="/video" alt="Loading camera...">
+                        <div class="rec-indicator">
+                            <div class="rec-dot"></div>
+                            REC
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <h3>🚨 Log Pelanggaran</h3>
+                    <div class="violation-log" id="violationLog">
+                        <p style="text-align: center; color: #10b981; padding: 20px;">
+                            ✅ Belum ada pelanggaran<br>
+                            <small style="color: #666;">Sistem aktif mendeteksi...</small>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HASIL -->
+    <div id="resultPage" class="container hidden">
+        <div class="card">
+            <h1 style="color: #10b981;">✅ Ujian Selesai</h1>
+            <p class="subtitle">Terima kasih telah mengikuti ujian</p>
+            
+            <div class="result-summary">
+                <h2>📊 Hasil Monitoring Kecurangan</h2>
+                <div class="result-score safe" id="resultScoreDisplay">0</div>
+                <p id="resultScoreText" style="font-size: 18px;">Pelanggaran Terdeteksi</p>
+            </div>
+
+            <div class="info-box">
+                <h3>👤 Informasi Peserta</h3>
+                <div class="info-row">
+                    <span class="info-label">Nama:</span>
+                    <span class="info-value" id="resultName">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">NIM:</span>
+                    <span class="info-value" id="resultNim">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Waktu Selesai:</span>
+                    <span class="info-value" id="resultTime">-</span>
+                </div>
+            </div>
+
+            <div id="emailStatusDiv" class="hidden"></div>
+
+            <div class="violation-list-result">
+                <h3>⚠️ Detail Pelanggaran</h3>
+                <div id="violationListResult"></div>
+            </div>
+
+            <button class="btn" onclick="logout()" style="margin-top: 30px;">Logout & Mulai Baru</button>
+        </div>
+    </div>
+
+    <script>
+        let currentStudent = {};
+        let currentQuestionIndex = 0;
+        let violations = [];
+        let tabSwitchDetected = false;
+
+        const questions = [
+            { id: 1, question: "Apa ibu kota Indonesia?", options: ["Jakarta", "Bandung", "Surabaya", "Medan"] },
+            { id: 2, question: "Berapa hasil dari 15 + 27?", options: ["40", "42", "44", "46"] },
+            { id: 3, question: "Siapa presiden pertama Indonesia?", options: ["Soekarno", "Soeharto", "Habibie", "Megawati"] },
+            { id: 4, question: "Planet terbesar di tata surya?", options: ["Jupiter", "Saturnus", "Bumi", "Mars"] },
+            { id: 5, question: "Siapa penemu lampu pijar?", options: ["Thomas Edison", "Nikola Tesla", "Albert Einstein", "Isaac Newton"] }
+        ];
+
+        function login() {
+            const nim = document.getElementById('nim').value;
+            const password = document.getElementById('password').value;
+            
+            if (!nim || !password) {
+                alert('Mohon isi NIM dan Password');
+                return;
+            }
+            
+            currentStudent = { nim, name: 'Mahasiswa ' + nim };
+            document.getElementById('studentName').textContent = currentStudent.name;
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('instructionPage').classList.remove('hidden');
+        }
+
+        async function startExam() {
+            try {
+                const response = await fetch('/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentStudent)
+                });
+                
+                if (response.ok) {
+                    document.getElementById('instructionPage').classList.add('hidden');
+                    document.getElementById('examPage').classList.remove('hidden');
+                    document.getElementById('totalQ').textContent = questions.length;
+                    loadQuestion(0);
+                    startTabDetection();
+                    startViolationPolling();
+                }
+            } catch (error) {
+                alert('Error: Pastikan backend Python sudah running!');
+            }
+        }
+
+        function loadQuestion(index) {
+            currentQuestionIndex = index;
+            const q = questions[index];
+            
+            document.getElementById('currentQ').textContent = index + 1;
+            document.getElementById('questionText').textContent = q.question;
+            
+            const optionsHtml = q.options.map((opt, i) => `
+                <div class="option">
+                    <input type="radio" name="answer" value="${opt}" id="opt${i}">
+                    <label for="opt${i}" style="cursor: pointer; flex: 1;">${opt}</label>
+                </div>
+            `).join('');
+            
+            document.getElementById('optionsContainer').innerHTML = optionsHtml;
+            
+            document.getElementById('prevBtn').style.display = index > 0 ? 'block' : 'none';
+            document.getElementById('nextBtn').style.display = index < questions.length - 1 ? 'block' : 'none';
+            document.getElementById('submitBtn').classList.toggle('hidden', index < questions.length - 1);
+        }
+
+        function nextQuestion() {
+            if (currentQuestionIndex < questions.length - 1) {
+                loadQuestion(currentQuestionIndex + 1);
+            }
+        }
+
+        function prevQuestion() {
+            if (currentQuestionIndex > 0) {
+                loadQuestion(currentQuestionIndex - 1);
+            }
+        }
+
+        function startTabDetection() {
+            document.addEventListener('visibilitychange', async () => {
+                if (document.hidden && !tabSwitchDetected) {
+                    tabSwitchDetected = true;
+                    document.getElementById('tabWarning').classList.remove('hidden');
+                    
+                    await fetch('/log_tab_switch', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            type: 'TAB_SWITCH', 
+                            duration: 0
+                        })
+                    });
+                    
+                    setTimeout(() => {
+                        document.getElementById('tabWarning').classList.add('hidden');
+                        tabSwitchDetected = false;
+                    }, 3000);
+                }
+            });
+        }
+
+        function startViolationPolling() {
+            setInterval(async () => {
+                try {
+                    const response = await fetch('/get_violations');
+                    const data = await response.json();
+                    violations = data.violations || [];
+                    
+                    const tabViolations = data.tab_violations || [];
+                    const totalViolations = violations.length + tabViolations.length;
+                    
+                    // Update counter
+                    document.getElementById('violationCount').textContent = violations.length;
+                    document.getElementById('tabSwitchCount').textContent = tabViolations.length;
+                    
+                    // Update log dengan SEMUA pelanggaran (kamera + tab)
+                    updateViolationLog(violations, tabViolations);
+                } catch (error) {
+                    console.error('Error:', error);
+                }
+            }, 2000);
+        }
+
+        function updateViolationLog(cameraViolations, tabViolations) {
+            const logContainer = document.getElementById('violationLog');
+            
+            // Gabungkan semua pelanggaran
+            const allViolations = [
+                ...cameraViolations.map(v => ({...v, source: 'camera'})),
+                ...tabViolations.map(v => ({...v, source: 'tab', violation_type: 'Pindah Tab', description: 'Meninggalkan halaman ujian'}))
+            ];
+            
+            // Sort by timestamp (terbaru dulu)
+            allViolations.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            if (allViolations.length === 0) {
+                logContainer.innerHTML = `
+                    <p style="text-align: center; color: #10b981; padding: 20px;">
+                        ✅ Belum ada pelanggaran<br>
+                        <small style="color: #666;">Sistem aktif mendeteksi...</small>
+                    </p>
+                `;
+                return;
+            }
+            
+            const recentViolations = allViolations.slice(0, 10); // 10 pelanggaran terakhir
+            logContainer.innerHTML = recentViolations.map(v => {
+                const icon = v.source === 'tab' ? '🖥️' : '🎥';
+                const bgColor = v.source === 'tab' ? '#fef3c7' : '#fee2e2';
+                const borderColor = v.source === 'tab' ? '#f59e0b' : '#ef4444';
+                
+                return `
+                <div class="violation-item" style="background: ${bgColor}; border-left-color: ${borderColor};">
+                    <div class="violation-type">${icon} ${v.violation_type || v.type}</div>
+                    <div style="font-size: 11px; color: #555; margin-top: 3px;">${v.description || ''}</div>
+                    <div class="violation-time">${new Date(v.timestamp).toLocaleTimeString('id-ID')}</div>
+                </div>
+            `}).join('');
+        }
+
+        async function submitExam() {
+            if (!confirm('Yakin ingin mengumpulkan ujian?')) return;
+            
+            document.getElementById('examPage').classList.add('hidden');
+            document.getElementById('resultPage').classList.remove('hidden');
+            
+            const statusDiv = document.getElementById('emailStatusDiv');
+            statusDiv.innerHTML = '<div class="info-banner">⏳ Memproses hasil ujian...</div>';
+            statusDiv.classList.remove('hidden');
+            
+            try {
+                // Stop exam
+                const stopResponse = await fetch('/stop', { method: 'POST' });
+                const stopData = await stopResponse.json();
+                
+                console.log('Stop response:', stopData);
+                
+                // Get violations
+                const violationsResponse = await fetch('/get_violations');
+                const violationsData = await violationsResponse.json();
+                
+                console.log('Violations data:', violationsData);
+                
+                const allViolations = violationsData.violations || [];
+                const tabViolations = violationsData.tab_violations || [];
+                const totalViolations = allViolations.length + tabViolations.length;
+                
+                // Update UI
+                document.getElementById('resultName').textContent = currentStudent.name;
+                document.getElementById('resultNim').textContent = currentStudent.nim;
+                document.getElementById('resultTime').textContent = new Date().toLocaleString('id-ID');
+                
+                const scoreDisplay = document.getElementById('resultScoreDisplay');
+                const scoreText = document.getElementById('resultScoreText');
+                scoreDisplay.textContent = totalViolations;
+                
+                if (totalViolations === 0) {
+                    scoreDisplay.className = 'result-score safe';
+                    scoreText.textContent = '✅ Tidak Ada Pelanggaran - Ujian Berjalan Lancar';
+                } else if (totalViolations < 3) {
+                    scoreDisplay.className = 'result-score safe';
+                    scoreText.textContent = `✅ ${totalViolations} Pelanggaran Ringan`;
+                } else if (totalViolations < 5) {
+                    scoreDisplay.className = 'result-score warning';
+                    scoreText.textContent = `⚠️ ${totalViolations} Pelanggaran Terdeteksi`;
+                } else {
+                    scoreDisplay.className = 'result-score danger';
+                    scoreText.textContent = `🚨 ${totalViolations} Pelanggaran - Status Mencurigakan`;
+                }
+                
+                // Display violations
+                displayViolationsText(allViolations, tabViolations);
+                
+                // Email status
+                if (stopData.email_sent) {
+                    statusDiv.innerHTML = `
+                        <div class="email-status">
+                            <strong>✅ Ujian Berhasil Dikumpulkan</strong><br>
+                            <small>Total ${totalViolations} pelanggaran tercatat</small><br>
+                            <small>📧 Laporan telah dikirim ke email pengawas</small>
+                        </div>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `
+                        <div class="warning-banner">
+                            <strong>⚠️ Ujian Selesai</strong><br>
+                            <small>Total ${totalViolations} pelanggaran tercatat</small><br>
+                            <small>❌ Gagal mengirim email (cek koneksi/konfigurasi)</small>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Submit error:', error);
+                statusDiv.innerHTML = `
+                    <div class="warning-banner">
+                        <strong>❌ Error Submit Ujian</strong><br>
+                        <small>${error.message}</small>
+                    </div>
+                `;
+            }
+        }
+
+        // FUNGSI TAMPILKAN PELANGGARAN - SUDAH DIPERBAIKI!
+        function displayViolationsText(cameraViolations, tabViolations) {
+            const container = document.getElementById('violationListResult');
+            
+            const totalViolations = cameraViolations.length + tabViolations.length;
+            
+            if (totalViolations === 0) {
+                container.innerHTML = `
+                    <div class="empty-violations">
+                        <div class="empty-violations-icon">🎉</div>
+                        <h3>Sempurna!</h3>
+                        <p>Tidak ada pelanggaran yang terdeteksi selama ujian berlangsung</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            let counter = 1;
+            
+            // PELANGGARAN KAMERA (HP, Buku, Wajah, Menoleh)
+            if (cameraViolations.length > 0) {
+                cameraViolations.forEach((v) => {
+                    const time = new Date(v.timestamp).toLocaleTimeString('id-ID', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                    const date = new Date(v.timestamp).toLocaleDateString('id-ID');
+                    
+                    const violationType = v.violation_type || 'Pelanggaran';
+                    const description = v.description || 'Tidak ada deskripsi';
+                    
+                    html += `
+                        <div class="result-violation-item">
+                            <div style="display: flex; align-items: flex-start;">
+                                <div class="result-violation-number">${counter}</div>
+                                <div class="result-violation-content">
+                                    <div class="result-violation-type">🎥 ${violationType}</div>
+                                    <div class="result-violation-time">⏰ ${date} - ${time}</div>
+                                    <div class="result-violation-desc">${description}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    counter++;
+                });
+            }
+            
+            // TAB VIOLATIONS
+            if (tabViolations.length > 0) {
+                tabViolations.forEach((v) => {
+                    const time = new Date(v.timestamp).toLocaleTimeString('id-ID', {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                    const date = new Date(v.timestamp).toLocaleDateString('id-ID');
+                    
+                    const durationMs = v.duration || 0;
+                    const durationText = durationMs > 0 ? ` selama ${(durationMs / 1000).toFixed(1)} detik` : '';
+                    
+                    html += `
+                        <div class="result-violation-item">
+                            <div style="display: flex; align-items: flex-start;">
+                                <div class="result-violation-number">${counter}</div>
+                                <div class="result-violation-content">
+                                    <div class="result-violation-type">🖥️ Tab Switch / Pindah Jendela</div>
+                                    <div class="result-violation-time">⏰ ${date} - ${time}</div>
+                                    <div class="result-violation-desc">Mahasiswa meninggalkan halaman ujian${durationText}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    counter++;
+                });
+            }
+            
+            container.innerHTML = html;
+        }
+
+        function logout() {
+            location.reload();
+        }
+
+        // Keep video feed fresh
+        setInterval(() => {
+            const videoFeed = document.getElementById('videoFeed');
+            if (videoFeed && !document.getElementById('examPage').classList.contains('hidden')) {
+                const src = videoFeed.src;
+                videoFeed.src = src.split('?')[0] + '?t=' + Date.now();
+            }
+        }, 30000);
+    </script>
+</body>
+</html>
